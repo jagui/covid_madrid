@@ -15,7 +15,7 @@ def paint_madrid() -> plt.Figure:
         "montecarmelo",
         "mirasierra",
         "las tablas",
-        "fuencarral",
+        "sanchinarro",
     ]
 
     zone_key = "zona_basica_salud"
