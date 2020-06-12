@@ -8,15 +8,16 @@ import matplotlib.pyplot as plt
 import requests
 
 
-def paint_madrid() -> plt.Figure:
+def paint_madrid(zones: list = None) -> plt.Figure:
     url = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/01a7d2e8-67c1-4000-819d-3356bb514d05/download/covid19_tia_zonas_basicas_salud.json"
 
-    zones = [
-        "montecarmelo",
-        "mirasierra",
-        "las tablas",
-        "sanchinarro",
-    ]
+    if zones == None:
+        zones = [
+            "Montecarmelo",
+            "Mirasierra",
+            "Las Tablas",
+            "Fuencarral",
+        ]
 
     zone_key = "zona_basica_salud"
 
@@ -83,7 +84,7 @@ def paint_madrid() -> plt.Figure:
         ax.grid(axis="x", which="minor")
         ax.grid(axis="y", which="both")
         ax.legend()
-    fig.set_size_inches(12, 12)
+    fig.set_size_inches(10, 10)
     fig.tight_layout(pad=3.0)
     return fig
 
