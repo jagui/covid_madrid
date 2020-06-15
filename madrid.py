@@ -6,6 +6,7 @@ import typing
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import requests
+import seaborn as sns
 
 
 def paint_madrid(zones: list = None) -> plt.Figure:
@@ -68,24 +69,27 @@ def paint_madrid(zones: list = None) -> plt.Figure:
     months_formatter = mdates.DateFormatter("%b")
     days_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY)
     days_formatter = mdates.DateFormatter("%d")
-    fig, axs = plt.subplots(max(math.ceil(graphs_count / cols_count), 2), cols_count)
+
+    sns.set()
+    sns.set_context("notebook")
+
+    fig = plt.figure(figsize=(10, 10))
+    gs = fig.add_gridspec(max(math.ceil(graphs_count / cols_count), 2), cols_count)
+
     for i in range(graphs_count):
         row = i // cols_count
         col = i % cols_count
-        ax = axs[row, col]
+        ax = fig.add_subplot(gs[row, col])
         for zone in zones:
-            ax.plot(date_key, figures_keys[i], label=zone, data=results[zone])
+            sns.lineplot(date_key, figures_keys[i], label=zone, data=results[zone])
         ax.xaxis.set_major_locator(months_locator)
         ax.xaxis.set_major_formatter(months_formatter)
         ax.xaxis.set_minor_locator(days_locator)
         ax.xaxis.set_minor_formatter(days_formatter)
         ax.xaxis.set_tick_params(which="major", pad=10)
         ax.set_title(figures_keys[i])
-        ax.grid(axis="x", which="minor")
-        ax.grid(axis="y", which="both")
         ax.legend()
-    fig.set_size_inches(10, 10)
-    fig.tight_layout(pad=3.0)
+    fig.tight_layout()
     return fig
 
 
