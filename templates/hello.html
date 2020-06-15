@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Covid Madrid by TeslaCoolLab</title>
+    <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}" />
+  </head>
+  <body>
+    <div class="container">
+      <div>
+        <h1>Información epidemiológica Covid-19</h1>
+        <p>
+          Última actualización <em>{{date}}</em> desde la
+          <a
+            href="https://datos.comunidad.madrid/catalogo/dataset/covid19_tia_zonas_basicas_salud"
+            >Comunidad de Madrid</a
+          >.
+        </p>
+        <p>Para mostrar otras zonas sanitarias básicas modifica la url.</p>
+        <p>
+          Mapa disponible
+          <a
+            href="https://comunidadmadrid.maps.arcgis.com/apps/PublicInformation/index.html?appid=7db220dc2e0a40b4a928df661a89762e"
+            >aquí</a
+          >.
+        </p>
+      </div>
+      <div>
+        <img src="data:image/png;base64,{{data}}" />
+      </div>
+      <div>
+        Hecho con Python en
+        <a href="https://teslacoollab.com/">Tesla Cool Lab</a>
+      </div>
+    </div>
+  </body>
+</html>

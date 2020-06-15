@@ -1,4 +1,5 @@
 import datetime
+import locale
 import math
 import string as _string
 import typing
@@ -63,16 +64,19 @@ def paint_madrid(zones: list = None) -> plt.Figure:
                 )
             )
 
+    locale.setlocale(locale.LC_ALL, "es_ES.utf8")
+    max_date = max(
+        [d for x in results.values() for k, v in x.items() if k == date_key for d in v]
+    ).strftime("%c")
+
     graphs_count = len(figures_keys)
     cols_count = 2
     months_locator = mdates.MonthLocator()
     months_formatter = mdates.DateFormatter("%b")
     days_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY)
     days_formatter = mdates.DateFormatter("%d")
-
     sns.set()
     sns.set_context("notebook")
-
     fig = plt.figure(figsize=(10, 10))
     gs = fig.add_gridspec(max(math.ceil(graphs_count / cols_count), 2), cols_count)
 
@@ -90,7 +94,7 @@ def paint_madrid(zones: list = None) -> plt.Figure:
         ax.set_title(figures_keys[i])
         ax.legend()
     fig.tight_layout()
-    return fig
+    return fig, max_date
 
 
 if __name__ == "__main__":
