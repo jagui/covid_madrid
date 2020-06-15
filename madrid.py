@@ -64,7 +64,7 @@ def paint_madrid(zones: list = None) -> plt.Figure:
                 )
             )
 
-    locale.setlocale(locale.LC_ALL, "es_ES.utf8")
+    # locale.setlocale(locale.LC_ALL, "es_ES.utf8")
     max_date = max(
         [d for x in results.values() for k, v in x.items() if k == date_key for d in v]
     ).strftime("%c")
