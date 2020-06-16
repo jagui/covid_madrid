@@ -1,16 +1,19 @@
+import base64
 import datetime
 import locale
 import math
 import string as _string
 import typing
-
+from io import BytesIO
+import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import requests
 import seaborn as sns
 
 
-def paint_madrid(zones: list = None) -> plt.Figure:
+def paint_madrid(zones: list = None) -> (dict, datetime.date):
+    matplotlib.use("Agg")
     url = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/01a7d2e8-67c1-4000-819d-3356bb514d05/download/covid19_tia_zonas_basicas_salud.json"
 
     if zones == None:
@@ -67,7 +70,7 @@ def paint_madrid(zones: list = None) -> plt.Figure:
     # locale.setlocale(locale.LC_ALL, "es_ES.utf8")
     max_date = max(
         [d for x in results.values() for k, v in x.items() if k == date_key for d in v]
-    ).strftime("%c")
+    ).isoformat()
 
     graphs_count = len(figures_keys)
     cols_count = 2
@@ -77,13 +80,12 @@ def paint_madrid(zones: list = None) -> plt.Figure:
     days_formatter = mdates.DateFormatter("%d")
     sns.set()
     sns.set_context("notebook")
-    fig = plt.figure(figsize=(10, 10))
-    gs = fig.add_gridspec(max(math.ceil(graphs_count / cols_count), 2), cols_count)
+
+    figs = {}
 
     for i in range(graphs_count):
-        row = i // cols_count
-        col = i % cols_count
-        ax = fig.add_subplot(gs[row, col])
+        fig = plt.figure()
+        ax = fig.add_subplot()
         for zone in zones:
             sns.lineplot(date_key, figures_keys[i], label=zone, data=results[zone])
         ax.xaxis.set_major_locator(months_locator)
@@ -93,8 +95,14 @@ def paint_madrid(zones: list = None) -> plt.Figure:
         ax.xaxis.set_tick_params(which="major", pad=10)
         ax.set_title(figures_keys[i])
         ax.legend()
-    fig.tight_layout()
-    return fig, max_date
+        fig.tight_layout()
+        buf = BytesIO()
+        fig.savefig(buf, format="png")
+        plt.close(fig)
+        data = base64.b64encode(buf.getbuffer()).decode("ascii")
+        figs[figures_keys[i]] = data
+    plt.close()
+    return figs, max_date
 
 
 if __name__ == "__main__":

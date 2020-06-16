@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Covid Madrid by TeslaCoolLab</title>
     <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}" />
+    <script src="{{url_for('static',filename='js.js')}}"></script>
   </head>
   <body>
     <div class="container">
       <div>
         <h1>Información epidemiológica Covid-19</h1>
         <p>
-          Última actualización <em>{{date}}</em> desde la
+          Última actualización <em id="date">{{date}}</em> desde la
           <a
             href="https://datos.comunidad.madrid/catalogo/dataset/covid19_tia_zonas_basicas_salud"
             >Comunidad de Madrid</a
@@ -26,8 +27,12 @@
           >.
         </p>
       </div>
-      <div>
-        <img src="data:image/png;base64,{{data}}" />
+      <div class="img-container">
+        {% for data in datas %}
+        <div>
+          <img src="data:image/png;base64,{{data}}" />
+        </div>
+        {% endfor %}
       </div>
       <div>
         Hecho con Python en
