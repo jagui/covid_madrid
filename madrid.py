@@ -1,20 +1,14 @@
-import base64
-import datetime
-import locale
-import math
-import string as _string
-import typing
-from io import BytesIO
-import matplotlib
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
+import ssl
+
+import pandas as pd
 import requests
-import seaborn as sns
 
 
-def paint_madrid(zones: list = None) -> (dict, datetime.date):
-    matplotlib.use("Agg")
-    url = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/01a7d2e8-67c1-4000-819d-3356bb514d05/download/covid19_tia_zonas_basicas_salud.json"
+def named_fig(key, df, kind="line") -> dict:
+    return {key: df.plot(title=key, kind=kind)}
+
+
+def get_madrid_figs(zones: list = None):
 
     if zones == None:
         zones = [
@@ -25,86 +19,66 @@ def paint_madrid(zones: list = None) -> (dict, datetime.date):
         ]
 
     zone_key = "zona_basica_salud"
-
     date_key = "fecha_informe"
-
+    confirmed_cases_14d_key = "casos_confirmados_ultimos_14dias"
+    cur_14d_key = "tasa_incidencia_acumulada_ultimos_14dias"
+    confirmed_cases_dayone_key = "casos_confirmados_totales"
+    cur_dayone_key = "tasa_incidencia_acumulada_total"
     figures_keys = [
-        "casos_confirmados_ultimos_14dias",
-        "tasa_incidencia_acumulada_ultimos_14dias",
-        "casos_confirmados_totales",
-        "tasa_incidencia_acumulada_total",
+        confirmed_cases_14d_key,
+        cur_14d_key,
+        confirmed_cases_dayone_key,
+        cur_dayone_key,
     ]
+    cam_confirmed_cases_dayone_key = "madrid_casos_confirmados_totales"
+    cam_confirmed_cases_14d_key = "madrid_casos_confirmados_ultimos_14dias"
+    cam_zone_key = "cam"
 
-    rsp = requests.get(url, verify=False)
+    ssl._create_default_https_context = ssl._create_unverified_context
+    source = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/b7b9edb4-0c70-47d3-9c64-8c4913830a24/download/covid19_tia_zonas_basicas_salud.csv"
+    big_df = pd.read_csv(
+        source, sep=";", encoding="latin_1", decimal=",", parse_dates=[date_key],
+    ).fillna(0.0)
 
-    if rsp.status_code != 200:
-        exit
+    max_date = big_df[date_key].max()
 
-    data = rsp.json()["data"]
+    figure_dfs = {}
+    for key in figures_keys:
+        df = big_df.pivot(index=date_key, columns=zone_key, values=key)
+        df.loc[:, cam_zone_key] = df.sum(axis=1)
+        figure_dfs[key] = df
 
-    def equal_strings(a: str, b: str) -> bool:
-        cleaner = str.maketrans(
-            _string.ascii_uppercase,
-            _string.ascii_lowercase,
-            _string.punctuation + _string.whitespace,
-        )
-        return str.translate(a, cleaner) == str.translate(b, cleaner)
-
-    results = {}
-    for zone in zones:
-        zone_data = [x for x in data if equal_strings(x[zone_key], zone)]
-        results[zone] = {}
-        for key in figures_keys:
-            results[zone][key] = list(
-                map(lambda item: item[key] if key in item else 0, zone_data)
-            )
-            results[zone][date_key] = list(
-                map(
-                    lambda item: datetime.datetime.strptime(
-                        item[date_key], "%Y/%m/%d %H:%M:%S"
-                    ),
-                    zone_data,
-                )
-            )
-
-    # locale.setlocale(locale.LC_ALL, "es_ES.utf8")
-    max_date = max(
-        [d for x in results.values() for k, v in x.items() if k == date_key for d in v]
-    ).isoformat()
-
-    graphs_count = len(figures_keys)
-    cols_count = 2
-    months_locator = mdates.MonthLocator()
-    months_formatter = mdates.DateFormatter("%b")
-    days_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY)
-    days_formatter = mdates.DateFormatter("%d")
-    sns.set()
-    sns.set_context("notebook")
+    pd.options.plotting.backend = "plotly"
 
     figs = {}
 
-    for i in range(graphs_count):
-        fig = plt.figure()
-        ax = fig.add_subplot()
-        for zone in zones:
-            sns.lineplot(date_key, figures_keys[i], label=zone, data=results[zone])
-        ax.xaxis.set_major_locator(months_locator)
-        ax.xaxis.set_major_formatter(months_formatter)
-        ax.xaxis.set_minor_locator(days_locator)
-        ax.xaxis.set_minor_formatter(days_formatter)
-        ax.xaxis.set_tick_params(which="major", pad=10)
-        ax.set_title(figures_keys[i])
-        ax.legend()
-        fig.tight_layout()
-        buf = BytesIO()
-        fig.savefig(buf, format="png")
-        plt.close(fig)
-        data = base64.b64encode(buf.getbuffer()).decode("ascii")
-        figs[figures_keys[i]] = data
-    plt.close()
+    all_zsb_14d = (
+        big_df[big_df[date_key] == max_date][
+            [zone_key, cur_14d_key, confirmed_cases_14d_key]
+        ]
+        .set_index(zone_key)
+        .sort_values(by=[cur_14d_key, confirmed_cases_14d_key], ascending=False)
+    )
+
+    top_10_zsb_14d = all_zsb_14d.head(10)
+
+    figs.update(named_fig("top_10_zsb_14d", top_10_zsb_14d, "barh"))
+
+    figs.update(
+        named_fig(
+            cam_confirmed_cases_14d_key,
+            figure_dfs[confirmed_cases_14d_key][cam_zone_key],
+        )
+    )
+
+    figs.update(
+        named_fig(
+            cam_confirmed_cases_dayone_key,
+            figure_dfs[confirmed_cases_dayone_key][cam_zone_key],
+        )
+    )
+
+    for key, df in figure_dfs.items():
+        figs.update(named_fig(key, df[zones]))
+
     return figs, max_date
-
-
-if __name__ == "__main__":
-    paint_madrid()
-    plt.show()
