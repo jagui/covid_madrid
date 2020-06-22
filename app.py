@@ -3,7 +3,13 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 
-figs, max_date = madrid.get_madrid_figs()
+
+def named_fig(key, dict, name="", kind="line"):
+    df = dict[key]
+    return df.plot(title=name if name != "" else key, kind=kind)
+
+
+dfs, max_date = madrid.get_madrid_dataframes()
 
 app = dash.Dash(
     __name__,
@@ -28,7 +34,6 @@ app.layout = html.Div(
                         ),
                     ]
                 ),
-                html.P("Para mostrar otras zonas sanitarias básicas modifica la url."),
                 html.P(
                     [
                         "Mapa disponible ",
@@ -42,7 +47,58 @@ app.layout = html.Div(
         ),
         html.Div(
             className="img-container",
-            children=[dcc.Graph(figure=fig) for key, fig in figs.items()],
+            children=[
+                dcc.Graph(
+                    figure=named_fig(
+                        madrid.top_10_zsb_14d_key,
+                        dfs,
+                        "Top 10 zonas sanitarias básicas 14 días",
+                        "barh",
+                    )
+                ),
+                dcc.Graph(
+                    figure=named_fig(
+                        madrid.cam_confirmed_cases_14d_key,
+                        dfs,
+                        "Comunidad de Madrid: casos confirmados 14 días",
+                    )
+                ),
+                dcc.Graph(
+                    figure=named_fig(
+                        madrid.cam_confirmed_cases_dayone_key,
+                        dfs,
+                        "Comunidad de Madrid: casos confirmados totales",
+                    )
+                ),
+                dcc.Graph(
+                    figure=named_fig(
+                        madrid.confirmed_cases_14d_key,
+                        dfs,
+                        "Top 4 casos confirmados 14 días",
+                    )
+                ),
+                dcc.Graph(
+                    figure=named_fig(
+                        madrid.cur_14d_key,
+                        dfs,
+                        "Top 4: tasa incidencia acumulada 14 días",
+                    )
+                ),
+                dcc.Graph(
+                    figure=named_fig(
+                        madrid.confirmed_cases_dayone_key,
+                        dfs,
+                        "Top 4: casos confirmados totales",
+                    )
+                ),
+                dcc.Graph(
+                    figure=named_fig(
+                        madrid.cur_dayone_key,
+                        dfs,
+                        "Top 4: tasa incidencia acumulada día cero",
+                    )
+                ),
+            ],
         ),
         html.Div(
             children=[
