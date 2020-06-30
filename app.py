@@ -40,6 +40,8 @@ big_df = pd.read_csv(
     source, sep=";", encoding="latin_1", decimal=",", parse_dates=[date_key],
 ).fillna(0.0)
 
+big_df.drop_duplicates([date_key, zone_key], inplace=True)
+
 all_zsbs = big_df[[zone_key, zone_geographic_key]].drop_duplicates()
 
 max_date = big_df[date_key].max()
