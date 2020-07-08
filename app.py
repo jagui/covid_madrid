@@ -20,8 +20,8 @@ cur_14d_key = "tasa_incidencia_acumulada_ultimos_14dias"
 confirmed_cases_dayone_key = "casos_confirmados_totales"
 cur_dayone_key = "tasa_incidencia_acumulada_total"
 cam_confirmed_cases_dayone_key = "madrid_casos_confirmados_totales"
-cam_new_cases_dayone_key = "madrid_nuevos_casos_confirmados"
 cam_confirmed_cases_14d_key = "madrid_casos_confirmados_ultimos_14dias"
+new_cases_dayone_key = "new_cases"
 top_10_zsb_14d_key = "top_10_zsb_14d"
 zone_key = "zona_basica_salud"
 zone_geographic_key = "codigo_geometria"
@@ -94,11 +94,7 @@ dfs.update(
 )
 
 dfs.update(
-    {
-        cam_new_cases_dayone_key: figure_dfs[confirmed_cases_dayone_key][
-            cam_zone_key
-        ].diff()
-    }
+    {new_cases_dayone_key: figure_dfs[confirmed_cases_dayone_key][cam_zone_key].diff()}
 )
 
 app = dash.Dash(
@@ -116,9 +112,15 @@ def update_zones(zones_geo_codes):
 
     if not len(zones):
         return []
+    dfs = {}
 
     for key, df in figure_dfs.items():
         dfs.update({key: df[zones]})
+
+    dfs.update(
+        {new_cases_dayone_key: figure_dfs[confirmed_cases_dayone_key][zones].diff()}
+    )
+
     figures = [
         dbc.Col(
             dcc.Graph(
@@ -140,6 +142,10 @@ def update_zones(zones_geo_codes):
                     confirmed_cases_dayone_key, dfs, "Casos confirmados totales",
                 )
             ),
+            lg=6,
+        ),
+        dbc.Col(
+            dcc.Graph(figure=named_fig(new_cases_dayone_key, dfs, "Nuevos casos",)),
             lg=6,
         ),
         dbc.Col(
@@ -199,7 +205,7 @@ app.layout = dbc.Container(
                             "barh",
                         )
                     ),
-                    lg=4,
+                    lg=6,
                 ),
                 dbc.Col(
                     dcc.Graph(
@@ -209,17 +215,17 @@ app.layout = dbc.Container(
                             "Comunidad de Madrid: casos confirmados 14 días",
                         )
                     ),
-                    lg=4,
+                    lg=6,
                 ),
                 dbc.Col(
                     dcc.Graph(
                         figure=named_fig(
-                            cam_new_cases_dayone_key,
+                            new_cases_dayone_key,
                             dfs,
-                            "Comunidad de Madrid: nuevos casos diarios",
+                            "Comunidad de Madrid: nuevos casos",
                         ),
                     ),
-                    lg=4,
+                    lg=6,
                 ),
                 dbc.Col(
                     dcc.Graph(
@@ -229,7 +235,7 @@ app.layout = dbc.Container(
                             "Comunidad de Madrid: casos confirmados totales",
                         ),
                     ),
-                    lg=4,
+                    lg=6,
                 ),
             ],
         ),
