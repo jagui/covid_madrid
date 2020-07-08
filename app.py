@@ -20,6 +20,7 @@ cur_14d_key = "tasa_incidencia_acumulada_ultimos_14dias"
 confirmed_cases_dayone_key = "casos_confirmados_totales"
 cur_dayone_key = "tasa_incidencia_acumulada_total"
 cam_confirmed_cases_dayone_key = "madrid_casos_confirmados_totales"
+cam_new_cases_dayone_key = "madrid_nuevos_casos_confirmados"
 cam_confirmed_cases_14d_key = "madrid_casos_confirmados_ultimos_14dias"
 top_10_zsb_14d_key = "top_10_zsb_14d"
 zone_key = "zona_basica_salud"
@@ -36,9 +37,17 @@ cam_zone_key = "cam"
 
 ssl._create_default_https_context = ssl._create_unverified_context
 source = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/b7b9edb4-0c70-47d3-9c64-8c4913830a24/download/covid19_tia_zonas_basicas_salud.csv"
-big_df = pd.read_csv(
+big_df_pre_july_2nd = pd.read_csv(
     source, sep=";", encoding="latin_1", decimal=",", parse_dates=[date_key],
 ).fillna(0.0)
+
+
+source = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/43708c23-2b77-48fd-9986-fa97691a2d59/download/covid19_tia_zonas_basicas_salud_s.csv"
+big_df_post_july_2nd = pd.read_csv(
+    source, sep=";", encoding="latin_1", decimal=",", parse_dates=[date_key],
+).fillna(0.0)
+
+big_df = pd.concat([big_df_pre_july_2nd, big_df_post_july_2nd])
 
 big_df.drop_duplicates([date_key, zone_key], inplace=True)
 
@@ -81,6 +90,14 @@ dfs.update(
         cam_confirmed_cases_dayone_key: figure_dfs[confirmed_cases_dayone_key][
             cam_zone_key
         ]
+    }
+)
+
+dfs.update(
+    {
+        cam_new_cases_dayone_key: figure_dfs[confirmed_cases_dayone_key][
+            cam_zone_key
+        ].diff()
     }
 )
 
@@ -154,6 +171,14 @@ app.layout = dbc.Container(
         ),
         html.P(
             [
+                "Hasta el 1 de julio de 2020 los registros de datos correspondientes a cada fecha de informe se han añadido diariamente. ",
+                html.Em(
+                    "A partir del 2 de julio de 2020 la actualización pasa a ser semanal."
+                ),
+            ],
+        ),
+        html.P(
+            [
                 "Mapa disponible ",
                 html.A(
                     "aquí",
@@ -183,6 +208,16 @@ app.layout = dbc.Container(
                             dfs,
                             "Comunidad de Madrid: casos confirmados 14 días",
                         )
+                    ),
+                    lg=4,
+                ),
+                dbc.Col(
+                    dcc.Graph(
+                        figure=named_fig(
+                            cam_new_cases_dayone_key,
+                            dfs,
+                            "Comunidad de Madrid: nuevos casos diarios",
+                        ),
                     ),
                     lg=4,
                 ),
