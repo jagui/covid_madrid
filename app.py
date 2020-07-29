@@ -1,3 +1,4 @@
+import os
 import ssl
 
 import dash
@@ -16,33 +17,40 @@ def named_fig(key, dict, name="", kind="line"):
 
 # dataframes keys
 confirmed_cases_14d_key = "casos_confirmados_ultimos_14dias"
-cur_14d_key = "tasa_incidencia_acumulada_ultimos_14dias"
+tia_14d_key = "tasa_incidencia_acumulada_ultimos_14dias"
 confirmed_cases_dayone_key = "casos_confirmados_totales"
-cur_dayone_key = "tasa_incidencia_acumulada_total"
+tia_dayone_key = "tasa_incidencia_acumulada_total"
 cam_confirmed_cases_dayone_key = "madrid_casos_confirmados_totales"
 cam_confirmed_cases_14d_key = "madrid_casos_confirmados_ultimos_14dias"
 new_cases_dayone_key = "new_cases"
 top_10_zsb_14d_key = "top_10_zsb_14d"
 zone_key = "zona_basica_salud"
-zone_geographic_key = "codigo_geometria"
 date_key = "fecha_informe"
 
 figures_keys = [
     confirmed_cases_14d_key,
-    cur_14d_key,
+    tia_14d_key,
     confirmed_cases_dayone_key,
-    cur_dayone_key,
+    tia_dayone_key,
 ]
 cam_zone_key = "cam"
-
+local_csv = os.environ["LOCAL_CSV"]
 ssl._create_default_https_context = ssl._create_unverified_context
-source = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/b7b9edb4-0c70-47d3-9c64-8c4913830a24/download/covid19_tia_zonas_basicas_salud.csv"
+source = (
+    "./data/covid19_tia_zonas_basicas_salud.csv"
+    if local_csv
+    else "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/b7b9edb4-0c70-47d3-9c64-8c4913830a24/download/covid19_tia_zonas_basicas_salud.csv"
+)
 big_df_pre_july_2nd = pd.read_csv(
     source, sep=";", encoding="latin_1", decimal=",", parse_dates=[date_key],
 ).fillna(0.0)
 
 
-source = "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/43708c23-2b77-48fd-9986-fa97691a2d59/download/covid19_tia_zonas_basicas_salud_s.csv"
+source = (
+    "./data/covid19_tia_zonas_basicas_salud_s.csv"
+    if local_csv
+    else "https://datos.comunidad.madrid/catalogo/dataset/b3d55e40-8263-4c0b-827d-2bb23b5e7bab/resource/43708c23-2b77-48fd-9986-fa97691a2d59/download/covid19_tia_zonas_basicas_salud_s.csv"
+)
 big_df_post_july_2nd = pd.read_csv(
     source, sep=";", encoding="latin_1", decimal=",", parse_dates=[date_key],
 ).fillna(0.0)
@@ -51,7 +59,7 @@ big_df = pd.concat([big_df_pre_july_2nd, big_df_post_july_2nd])
 
 big_df.drop_duplicates([date_key, zone_key], inplace=True)
 
-all_zsbs = big_df[[zone_key, zone_geographic_key]].drop_duplicates()
+all_zsbs = big_df[[zone_key]].drop_duplicates()
 
 max_date = big_df[date_key].max()
 
@@ -67,10 +75,10 @@ dfs = {}
 
 all_zsb_14d_df = (
     big_df[big_df[date_key] == max_date][
-        [zone_key, cur_14d_key, confirmed_cases_14d_key, zone_geographic_key]
+        [zone_key, tia_14d_key, confirmed_cases_14d_key]
     ]
     .set_index(zone_key)
-    .sort_values(by=[cur_14d_key, confirmed_cases_14d_key], ascending=False)
+    .sort_values(by=[tia_14d_key, confirmed_cases_14d_key], ascending=False)
 )
 
 top_10_zsb_14d_df = all_zsb_14d_df.head(10)
@@ -78,7 +86,7 @@ top_10_zsb_14d_df = all_zsb_14d_df.head(10)
 default_zones_df = top_10_zsb_14d_df.head(4)
 
 dfs.update(
-    {top_10_zsb_14d_key: top_10_zsb_14d_df[[cur_14d_key, confirmed_cases_14d_key]]}
+    {top_10_zsb_14d_key: top_10_zsb_14d_df[[tia_14d_key, confirmed_cases_14d_key]]}
 )
 
 dfs.update(
@@ -105,10 +113,7 @@ app = dash.Dash(
 
 
 @app.callback(Output("figures", "children"), [Input("zones", "value")])
-def update_zones(zones_geo_codes):
-    zones = all_zsbs[all_zsbs[zone_geographic_key].isin(zones_geo_codes)][
-        zone_key
-    ].to_list()
+def update_zones(zones):
 
     if not len(zones):
         return []
@@ -132,7 +137,7 @@ def update_zones(zones_geo_codes):
         ),
         dbc.Col(
             dcc.Graph(
-                figure=named_fig(cur_14d_key, dfs, "Tasa incidencia acumulada 14 días",)
+                figure=named_fig(tia_14d_key, dfs, "Tasa incidencia acumulada 14 días",)
             ),
             lg=6,
         ),
@@ -151,7 +156,7 @@ def update_zones(zones_geo_codes):
         dbc.Col(
             dcc.Graph(
                 figure=named_fig(
-                    cur_dayone_key, dfs, "Tasa incidencia acumulada día cero",
+                    tia_dayone_key, dfs, "Tasa incidencia acumulada día cero",
                 )
             ),
             lg=6,
@@ -245,10 +250,10 @@ app.layout = dbc.Container(
         dcc.Dropdown(
             id="zones",
             options=[
-                {"label": row[zone_key], "value": row[zone_geographic_key]}
+                {"label": row[zone_key], "value": row[zone_key]}
                 for _, row in all_zsbs.iterrows()
             ],
-            value=[row[zone_geographic_key] for _, row in default_zones_df.iterrows()],
+            value=[zone_key for zone_key in default_zones_df.index],
             multi=True,
         ),
         dbc.Row(id="figures"),
