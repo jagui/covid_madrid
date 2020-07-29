@@ -34,7 +34,13 @@ figures_keys = [
     tia_dayone_key,
 ]
 cam_zone_key = "cam"
-local_csv = os.environ["LOCAL_CSV"]
+
+try:
+    local_csv = os.environ["LOCAL_CSV"]
+except KeyError:
+    local_csv = False
+
+
 ssl._create_default_https_context = ssl._create_unverified_context
 source = (
     "./data/covid19_tia_zonas_basicas_salud.csv"
