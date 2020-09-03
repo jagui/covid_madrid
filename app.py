@@ -8,6 +8,23 @@ import dash_html_components as html
 import pandas as pd
 import requests
 from dash.dependencies import Input, Output
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+
+def dual_fig(key, dict, y_left_column, y_right_column, name=""):
+    df = dict[key]
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(
+        go.Scatter(x=df.index, y=df[y_left_column], name=y_left_column),
+        secondary_y=False,
+    )
+    fig.add_trace(
+        go.Scatter(x=df.index, y=df[y_right_column], name=y_right_column),
+        secondary_y=True,
+    )
+    fig.update_layout(title_text=name, hovermode="x")
+    return fig
 
 
 def named_fig(key, dict, name="", kind="line"):
@@ -23,16 +40,16 @@ tia_dayone_key = "tasa_incidencia_acumulada_total"
 cam_confirmed_cases_dayone_key_pre_july_2nd = (
     "madrid_casos_confirmados_totales_pre_july_2nd"
 )
-cam_confirmed_cases_14d_key_pre_july_2nd = (
+cam_confirmed_cases_14d_pre_july_2nd_key = (
     "madrid_casos_confirmados_ultimos_14dias_pre_july_2nd"
 )
-cam_confirmed_cases_dayone_key_post_july_2nd = (
+cam_confirmed_cases_dayone_post_july_2nd_key = (
     "madrid_casos_confirmados_totales_post_july_2nd"
 )
-cam_confirmed_cases_14d_key_post_july_2nd = (
+cam_confirmed_cases_14d_post_july_2nd_key = (
     "madrid_casos_confirmados_ultimos_14dias_post_july_2nd"
 )
-new_cases_dayone_key_pre_july_2nd = "new_cases_pre_july_2nd"
+new_cases_dayone_pre_july_2nd_key = "new_cases_pre_july_2nd"
 new_cases_dayone_key_post_july_2nd = "new_cases_post_july_2nd"
 top_10_zsb_14d_key = "top_10_zsb_14d"
 zone_key = "zona_basica_salud"
@@ -45,6 +62,8 @@ figures_keys = [
     tia_dayone_key,
 ]
 cam_zone_key = "cam"
+cam_new_cases_key = "nuevos casos CAM"
+growth_rate_key = "tasa de crecimiento"
 
 try:
     local_csv = os.environ["LOCAL_CSV"] == "1"
@@ -109,26 +128,35 @@ top_10_zsb_14d_df = (
 
 default_zones_df = top_10_zsb_14d_df.head(4)
 
+new_cases_dayone_post_july_df = (
+    figure_dfs_post_july_2nd[confirmed_cases_dayone_key][cam_zone_key]
+    .diff()
+    .to_frame()
+    .rename(columns={cam_zone_key: cam_new_cases_key})
+)
+
+new_cases_dayone_post_july_df[growth_rate_key] = new_cases_dayone_post_july_df[
+    cam_new_cases_key
+].pct_change()
+
 dfs = {
     top_10_zsb_14d_key: top_10_zsb_14d_df[[tia_14d_key, confirmed_cases_14d_key]],
-    cam_confirmed_cases_14d_key_pre_july_2nd: figure_dfs_pre_july_2nd[
+    cam_confirmed_cases_14d_pre_july_2nd_key: figure_dfs_pre_july_2nd[
         confirmed_cases_14d_key
     ][cam_zone_key],
     cam_confirmed_cases_dayone_key_pre_july_2nd: figure_dfs_pre_july_2nd[
         confirmed_cases_dayone_key
     ][cam_zone_key],
-    cam_confirmed_cases_14d_key_post_july_2nd: figure_dfs_post_july_2nd[
+    cam_confirmed_cases_14d_post_july_2nd_key: figure_dfs_post_july_2nd[
         confirmed_cases_14d_key
     ][cam_zone_key],
-    cam_confirmed_cases_dayone_key_post_july_2nd: figure_dfs_post_july_2nd[
+    cam_confirmed_cases_dayone_post_july_2nd_key: figure_dfs_post_july_2nd[
         confirmed_cases_dayone_key
     ][cam_zone_key],
-    new_cases_dayone_key_pre_july_2nd: figure_dfs_pre_july_2nd[
+    new_cases_dayone_pre_july_2nd_key: figure_dfs_pre_july_2nd[
         confirmed_cases_dayone_key
     ][cam_zone_key].diff(),
-    new_cases_dayone_key_post_july_2nd: figure_dfs_post_july_2nd[
-        confirmed_cases_dayone_key
-    ][cam_zone_key].diff(),
+    new_cases_dayone_key_post_july_2nd: new_cases_dayone_post_july_df,
 }
 
 app = dash.Dash(
@@ -251,7 +279,7 @@ app.layout = dbc.Container(
                 dbc.Col(
                     dcc.Graph(
                         figure=named_fig(
-                            cam_confirmed_cases_14d_key_post_july_2nd,
+                            cam_confirmed_cases_14d_post_july_2nd_key,
                             dfs,
                             "Comunidad de Madrid: casos confirmados 14 días",
                         )
@@ -260,18 +288,20 @@ app.layout = dbc.Container(
                 ),
                 dbc.Col(
                     dcc.Graph(
-                        figure=named_fig(
-                            new_cases_dayone_key_post_july_2nd,
-                            dfs,
-                            "Comunidad de Madrid: nuevos casos",
-                        ),
+                        figure=dual_fig(
+                            key=new_cases_dayone_key_post_july_2nd,
+                            dict=dfs,
+                            y_left_column=cam_new_cases_key,
+                            y_right_column=growth_rate_key,
+                            name="Comunidad de Madrid: nuevos casos",
+                        )
                     ),
                     lg=6,
                 ),
                 dbc.Col(
                     dcc.Graph(
                         figure=named_fig(
-                            cam_confirmed_cases_dayone_key_post_july_2nd,
+                            cam_confirmed_cases_dayone_post_july_2nd_key,
                             dfs,
                             "Comunidad de Madrid: casos confirmados totales",
                         ),
@@ -313,7 +343,7 @@ app.layout = dbc.Container(
                 dbc.Col(
                     dcc.Graph(
                         figure=named_fig(
-                            cam_confirmed_cases_14d_key_pre_july_2nd,
+                            cam_confirmed_cases_14d_pre_july_2nd_key,
                             dfs,
                             "Comunidad de Madrid: casos confirmados 14 días",
                         )
@@ -323,7 +353,7 @@ app.layout = dbc.Container(
                 dbc.Col(
                     dcc.Graph(
                         figure=named_fig(
-                            new_cases_dayone_key_pre_july_2nd,
+                            new_cases_dayone_pre_july_2nd_key,
                             dfs,
                             "Comunidad de Madrid: nuevos casos",
                         ),
