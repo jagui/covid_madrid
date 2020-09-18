@@ -1,3 +1,4 @@
+import math
 import os
 import ssl
 
@@ -6,10 +7,10 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
+import plotly.graph_objects as go
 import requests
 from dash.dependencies import Input, Output
 from plotly.subplots import make_subplots
-import plotly.graph_objects as go
 
 
 def dual_fig(key, dict, y_left_column, y_right_column, name=""):
@@ -51,7 +52,6 @@ cam_confirmed_cases_14d_post_july_2nd_key = (
 )
 new_cases_dayone_pre_july_2nd_key = "new_cases_pre_july_2nd"
 new_cases_dayone_key_post_july_2nd = "new_cases_post_july_2nd"
-top_10_zsb_14d_key = "top_10_zsb_14d"
 zone_key = "zona_basica_salud"
 date_key = "fecha_informe"
 
@@ -104,13 +104,15 @@ max_date = big_df_post_july_2nd[date_key].max()
 
 figure_dfs_pre_july_2nd = {}
 for key in figures_keys:
-    df = big_df_pre_july_2nd.pivot(index=date_key, columns=zone_key, values=key)
+    df = big_df_pre_july_2nd.pivot(
+        index=date_key, columns=zone_key, values=key)
     df.loc[:, cam_zone_key] = df.sum(axis=1)
     figure_dfs_pre_july_2nd[key] = df
 
 figure_dfs_post_july_2nd = {}
 for key in figures_keys:
-    df = big_df_post_july_2nd.pivot(index=date_key, columns=zone_key, values=key)
+    df = big_df_post_july_2nd.pivot(
+        index=date_key, columns=zone_key, values=key)
     df.loc[:, cam_zone_key] = df.sum(axis=1)
     figure_dfs_post_july_2nd[key] = df
 
@@ -118,15 +120,17 @@ pd.options.plotting.backend = "plotly"
 
 dfs = {}
 
-top_10_zsb_14d_df = (
+sorted_by_tia_14d_df = (
     big_df_post_july_2nd[big_df_post_july_2nd[date_key] == max_date][
         [zone_key, tia_14d_key, confirmed_cases_14d_key]
     ]
     .set_index(zone_key)
-    .sort_values(by=[tia_14d_key, confirmed_cases_14d_key], ascending=False)
-).head(10)
+    .sort_values(by=[tia_14d_key, confirmed_cases_14d_key], ascending=True)
+)
 
-default_zones_df = top_10_zsb_14d_df.head(4)
+max_tia = math.ceil(sorted_by_tia_14d_df[tia_14d_key].max())
+
+default_zones_df = sorted_by_tia_14d_df.tail(4)
 
 new_cases_dayone_post_july_df = (
     figure_dfs_post_july_2nd[confirmed_cases_dayone_key][cam_zone_key]
@@ -140,7 +144,6 @@ new_cases_dayone_post_july_df[growth_rate_key] = new_cases_dayone_post_july_df[
 ].pct_change()
 
 dfs = {
-    top_10_zsb_14d_key: top_10_zsb_14d_df[[tia_14d_key, confirmed_cases_14d_key]],
     cam_confirmed_cases_14d_pre_july_2nd_key: figure_dfs_pre_july_2nd[
         confirmed_cases_14d_key
     ][cam_zone_key],
@@ -164,6 +167,24 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.FLATLY],
     external_scripts=["static/js.js"],
 )
+
+
+@app.callback(Output("tia-figure", "figure"), [Input("tia-14d-rangeslider", "value")])
+def update_tia(value):
+    filtered_tia_14d_zsb_df = sorted_by_tia_14d_df[sorted_by_tia_14d_df[tia_14d_key].between(
+        value[0], value[1], inclusive=True)]
+
+    filtered_tia_fig = filtered_tia_14d_zsb_df.plot(
+        title=f"Zonas sanitarias con tasa de incidencias acumulada a 14 días entre {value[0]} y {value[1]}",
+        kind='bar'
+    )
+    filtered_tia_fig .update_layout(
+        autosize=True,
+        xaxis=dict(
+            tickmode='linear',
+            dtick=1),
+    )
+    return filtered_tia_fig
 
 
 @app.callback(Output("figures", "children"), [Input("zones", "value")])
@@ -195,7 +216,8 @@ def update_zones(zones):
         ),
         dbc.Col(
             dcc.Graph(
-                figure=named_fig(tia_14d_key, dfs, "Tasa incidencia acumulada 14 días",)
+                figure=named_fig(tia_14d_key, dfs,
+                                 "Tasa incidencia acumulada 14 días",)
             ),
             lg=6,
         ),
@@ -252,7 +274,6 @@ app.layout = dbc.Container(
             ]
         ),
         html.H2("Comunidad de Madrid: desde 2 de julio"),
-        html.Hr(),
         html.P(
             [
                 "A partir del día 2 julio de 2020 la Comunidad de Madrid publica sus informes de forma semanal. Las siguientes gráficas se nutren de los datos publicados en este ",
@@ -263,19 +284,32 @@ app.layout = dbc.Container(
                 ".",
             ]
         ),
+        html.Hr(),
+        html.Label(
+            "Filtre zonas sanitarias básicas por Tasa de Incidencia Acumulada a 14 días"),
         dbc.Row(
             [
                 dbc.Col(
+                    dcc.RangeSlider(
+                        id='tia-14d-rangeslider',
+                        min=0,
+                        max=max_tia+100,
+                        step=10,
+                        value=[max_tia/2, max_tia],
+                        marks={i: str(i) for i in range(0, max_tia+100, 100)},
+                        included=True,
+                        allowCross=False,
+                    ), lg=12),
+                dbc.Col(
                     dcc.Graph(
-                        figure=named_fig(
-                            top_10_zsb_14d_key,
-                            dfs,
-                            "Top 10 zonas sanitarias básicas 14 días",
-                            "barh",
-                        )
+                        id='tia-figure'
                     ),
-                    lg=6,
-                ),
+                    lg=12,
+                )
+            ]
+        ),
+        dbc.Row(
+            [
                 dbc.Col(
                     dcc.Graph(
                         figure=named_fig(
@@ -388,4 +422,5 @@ app.layout = dbc.Container(
 server = app.server
 
 if __name__ == "__main__":
-    app.run_server(debug=True, use_reloader=True)  # Turn off reloader if inside Jupyter
+    # Turn off reloader if inside Jupyter
+    app.run_server(debug=True, use_reloader=True)
