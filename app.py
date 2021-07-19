@@ -104,15 +104,13 @@ max_date = big_df_post_july_2nd[date_key].max()
 
 figure_dfs_pre_july_2nd = {}
 for key in figures_keys:
-    df = big_df_pre_july_2nd.pivot(
-        index=date_key, columns=zone_key, values=key)
+    df = big_df_pre_july_2nd.pivot(index=date_key, columns=zone_key, values=key)
     df.loc[:, cam_zone_key] = df.sum(axis=1)
     figure_dfs_pre_july_2nd[key] = df
 
 figure_dfs_post_july_2nd = {}
 for key in figures_keys:
-    df = big_df_post_july_2nd.pivot(
-        index=date_key, columns=zone_key, values=key)
+    df = big_df_post_july_2nd.pivot(index=date_key, columns=zone_key, values=key)
     df.loc[:, cam_zone_key] = df.sum(axis=1)
     figure_dfs_post_july_2nd[key] = df
 
@@ -171,18 +169,16 @@ app = dash.Dash(
 
 @app.callback(Output("tia-figure", "figure"), [Input("tia-14d-rangeslider", "value")])
 def update_tia(value):
-    filtered_tia_14d_zsb_df = sorted_by_tia_14d_df[sorted_by_tia_14d_df[tia_14d_key].between(
-        value[0], value[1], inclusive=True)]
+    filtered_tia_14d_zsb_df = sorted_by_tia_14d_df[
+        sorted_by_tia_14d_df[tia_14d_key].between(value[0], value[1], inclusive=True)
+    ]
 
     filtered_tia_fig = filtered_tia_14d_zsb_df.plot(
         title=f"Zonas sanitarias con tasa de incidencias acumulada a 14 días entre {value[0]} y {value[1]}",
-        kind='bar'
+        kind="bar",
     )
-    filtered_tia_fig .update_layout(
-        autosize=True,
-        xaxis=dict(
-            tickmode='linear',
-            dtick=1),
+    filtered_tia_fig.update_layout(
+        autosize=True, xaxis=dict(tickmode="linear", dtick=1),
     )
     return filtered_tia_fig
 
@@ -216,8 +212,7 @@ def update_zones(zones):
         ),
         dbc.Col(
             dcc.Graph(
-                figure=named_fig(tia_14d_key, dfs,
-                                 "Tasa incidencia acumulada 14 días",)
+                figure=named_fig(tia_14d_key, dfs, "Tasa incidencia acumulada 14 días",)
             ),
             lg=6,
         ),
@@ -273,7 +268,7 @@ app.layout = dbc.Container(
                 ),
             ]
         ),
-        html.H2("Comunidad de Madrid: desde 2 de julio"),
+        html.H2("Comunidad de Madrid: desde 2 de julio de 2020"),
         html.P(
             [
                 "A partir del día 2 julio de 2020 la Comunidad de Madrid publica sus informes de forma semanal. Las siguientes gráficas se nutren de los datos publicados en este ",
@@ -286,26 +281,24 @@ app.layout = dbc.Container(
         ),
         html.Hr(),
         html.Label(
-            "Filtre zonas sanitarias básicas por Tasa de Incidencia Acumulada a 14 días"),
+            "Filtre zonas sanitarias básicas por Tasa de Incidencia Acumulada a 14 días"
+        ),
         dbc.Row(
             [
                 dbc.Col(
                     dcc.RangeSlider(
-                        id='tia-14d-rangeslider',
+                        id="tia-14d-rangeslider",
                         min=0,
-                        max=max_tia+100,
+                        max=max_tia + 100,
                         step=10,
-                        value=[max_tia/2, max_tia],
-                        marks={i: str(i) for i in range(0, max_tia+100, 100)},
+                        value=[max_tia / 2, max_tia],
+                        marks={i: str(i) for i in range(0, max_tia + 100, 100)},
                         included=True,
                         allowCross=False,
-                    ), lg=12),
-                dbc.Col(
-                    dcc.Graph(
-                        id='tia-figure'
                     ),
                     lg=12,
-                )
+                ),
+                dbc.Col(dcc.Graph(id="tia-figure"), lg=12,),
             ]
         ),
         dbc.Row(
@@ -344,7 +337,7 @@ app.layout = dbc.Container(
                 ),
             ],
         ),
-        html.H2("Por zonas sanitarias básicas desde el 2 de julio"),
+        html.H2("Por zonas sanitarias básicas desde el 2 de julio de 2020"),
         html.Hr(),
         html.Label("Seleccione zonas sanitarias básicas"),
         dcc.Dropdown(
@@ -357,7 +350,7 @@ app.layout = dbc.Container(
             multi=True,
         ),
         dbc.Row(id="figures"),
-        html.H2("Comunidad de Madrid hasta 1 de julio"),
+        html.H2("Comunidad de Madrid hasta 1 de julio de 2020"),
         html.Hr(),
         html.P(
             [
